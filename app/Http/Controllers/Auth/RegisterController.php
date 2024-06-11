@@ -8,7 +8,7 @@ use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log; // Add this line for logging
+use Illuminate\Support\Facades\Log; // Import Log facade
 
 class RegisterController extends Controller
 {
@@ -23,38 +23,47 @@ class RegisterController extends Controller
 
     protected function validator(array $data)
     {
-        return Validator::make($data, [
-            'name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'max:255', 'unique:users'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'phone' => ['required', 'string', 'max:15'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ]);
+        try {
+            return Validator::make($data, [
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+                'phone' => ['required', 'string', 'max:15'],
+                'password' => ['required', 'string', 'min:8', 'confirmed'],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Validation failed: ' . $e->getMessage());
+            throw $e;
+        }
     }
 
     protected function create(array $data)
     {
-        return User::create([
-            'name' => $data['name'],
-            'username' => $data['username'],
-            'email' => $data['email'],
-            'phone' => $data['phone'],
-            'password' => Hash::make($data['password']),
-        ]);
+        try {
+            return User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'phone' => $data['phone'],
+                'password' => Hash::make($data['password']),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('User creation failed: ' . $e->getMessage());
+            throw $e;
+        }
     }
 
     public function register(Request $request)
     {
-        Log::debug('Register Request Data:', $request->all()); // Log request data
+        try {
+            $this->validator($request->all())->validate();
 
-        $validator = $this->validator($request->all());
-        if ($validator->fails()) {
-            Log::error('Validation Failed:', $validator->errors()); // Log validation errors
-            return back()->withErrors($validator)->withInput(); // Redirect back with errors
+            $user = $this->create($request->all());
+            $this->guard()->login($user);
+
+            return redirect($this->redirectPath());
+        } catch (\Exception $e) {
+            Log::error('Registration failed: ' . $e->getMessage());
+            throw $e;
         }
-
-        $user = $this->create($request->all());
-        $this->guard()->login($user);
-        return redirect($this->redirectPath());
     }
 }
+
