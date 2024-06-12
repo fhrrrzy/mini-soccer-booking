@@ -6,17 +6,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Field;
-use App\Models\Booking;
+use Illuminate\Support\Str;
 
 class BookingTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * Test user registration, login, and booking a field.
-     *
-     * @return void
-     */
     public function test_user_can_register_login_and_book_field()
     {
         // Step 1: Register a new user
@@ -42,8 +37,9 @@ class BookingTest extends TestCase
 
         $loginResponse->assertRedirect('/home');
 
-        // Step 3: Create a field
+        // Step 3: Create a field with a UUID
         $field = Field::create([
+            'id' => (string) Str::uuid(),
             'name' => 'Test Field',
             'description' => 'This is a test field',
         ]);
@@ -52,17 +48,33 @@ class BookingTest extends TestCase
         $bookingResponse = $this->post('/bookings', [
             'field_id' => $field->id,
             'date' => '2024-07-01',
-            'time' => '10:00',
-            'duration' => 2,
+            'start_time' => '10:00',
+            'end_time' => '12:00',
         ]);
 
         $bookingResponse->assertRedirect('/bookings');
+
+        // Check for validation errors
+        if ($bookingResponse->exception) {
+            dd($bookingResponse->exception->validator->errors()->messages());
+        }
+
         $this->assertDatabaseHas('bookings', [
             'user_id' => User::where('email', 'john@example.com')->first()->id,
             'field_id' => $field->id,
             'date' => '2024-07-01',
-            'time' => '10:00',
-            'duration' => 2,
+            'start_time' => '10:00',
+            'end_time' => '12:00',
         ]);
+
+        // Step 5: Attempt to book the same field at the same time (should fail)
+        $duplicateBookingResponse = $this->post('/bookings', [
+            'field_id' => $field->id,
+            'date' => '2024-07-01',
+            'start_time' => '11:00', // Overlaps with the previous booking
+            'end_time' => '13:00',
+        ]);
+
+        $duplicateBookingResponse->assertSessionHasErrors(['msg' => 'The field is already booked for this time slot.']);
     }
 }

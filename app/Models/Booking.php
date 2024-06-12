@@ -15,4 +15,12 @@ class Booking extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Get the field that owns the booking.
+     */
+    public function field()
+    {
+        return $this->belongsTo(Field::class);
+    }
 }

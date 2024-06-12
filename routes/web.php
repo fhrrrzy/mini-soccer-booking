@@ -15,9 +15,7 @@ Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name
 
 
 
-Route::get('/bookings', [BookingController::class, 'index'])->middleware('auth');
-Route::post('/bookings', [BookingController::class, 'store'])->middleware('auth');
-
-
+Route::get('/bookings', [BookingController::class, 'index'])->middleware('auth')->name('bookings.index');
+Route::post('/bookings', [BookingController::class, 'store'])->middleware('auth')->name('bookings.store');
 
 Route::get('/fields', [FieldController::class, 'index']);
